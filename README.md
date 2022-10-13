@@ -1,2 +1,3 @@
 # ChromView
-![ChromView_atac_cosmic](https://user-images.githubusercontent.com/25789892/195272856-60ee9b44-dff2-4a9f-a1c8-da70e9d87984.jpg)
+
+![ChromView_example](https://user-images.githubusercontent.com/25789892/195536092-5901d2e3-5e9a-4b7e-b18e-7c52de6007ed.jpg)
