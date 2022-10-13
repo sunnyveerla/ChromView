@@ -9,9 +9,13 @@ import RadarPlot.UtilInterface;
 import com.qoppa.pdfWriter.PDFDocument;
 import com.qoppa.pdfWriter.PDFGraphics;
 import com.qoppa.pdfWriter.PDFPage;
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.geom.Arc2D;
 import java.awt.geom.Line2D;
+import java.awt.geom.Rectangle2D;
+import java.awt.geom.RoundRectangle2D;
 import java.awt.print.PageFormat;
 import java.awt.print.Paper;
 import java.io.BufferedReader;
@@ -36,7 +40,7 @@ public class CreateSNVTFPlot {
 
     public CreateSNVTFPlot() {
         String fileName = "E:/SNVTF/testing";
-        String dataFile = "E:/SNVTF/testing_data.txt";
+        String dataFile = "E:/SNVTF/testing_data_v2.txt";
         UtilInterface util = new UtilInterface();
         HashMap<String, HashMap<Integer, double[]>> hChr = createChr(dataFile);
         String[] mappers = util.getHeader(dataFile).split("\t");
@@ -47,7 +51,7 @@ public class CreateSNVTFPlot {
         int xOffset = 10;
         double yOffPer = 2.0; //Gap in percentage of total py
         int yOffset = 0;
-        int px = 500;
+        int px = 460;
         int py = 500;
 
 //        int x1 = 0, y1 = 0, x2 = 0, y2 = 0, x3 = px-20, y3 = 0,x4=0,y4=0;
@@ -59,8 +63,8 @@ public class CreateSNVTFPlot {
         //Prepare PDF Document
         PDFDocument pdfDoc = new PDFDocument();
         Paper pp = new Paper();
-        pp.setSize(px, py);
-        pp.setImageableArea(0, 0, px, py);
+        pp.setSize(px + 100, py);
+        pp.setImageableArea(0, 0, px + 100, py);
         PageFormat pf = new PageFormat();
         pf.setPaper(pp);
         // create a new page and add it to the PDF (important!)
@@ -74,13 +78,13 @@ public class CreateSNVTFPlot {
         //g2d.drawString("Sunny", x, 50);
 //        by = by-100;
         g2d.translate(10, 10);
-        x2 = px - 25;
+        x2 = px;
         drawBarValues(g2d, x1, y1, x2, y2, yOffset, yLen, hChr);
         g2d.setColor(Color.BLACK);
         for (int p = 0; p < nump; p++) {
             y1 = yOffset * (p + 1) + yLen * p;
             y2 = y1 + yLen;
-            drawChrScale(g2d, x1, y1, x2, y2, max, mappers[p + 2]);
+            drawChrScale(g2d, x1, y1, px + 50, y2, max, mappers[p + 2]);
         }
 
         try {
@@ -112,20 +116,30 @@ public class CreateSNVTFPlot {
         String ctmp = "";
         HashMap<String, List<Coordinates>> posMap = getChromCoord("E:/SNVTF/cytoBandIdeo.txt");
         Color col[] = new ToolBox().getDifferentColors(50);
+        Map<String, Color> cColors = getCytoColors();
 //        System.out.println(posMap.size());
         int ci = 0;
         long total = getGenomeLength(posMap);
 //        g2d.setColor(Color.GRAY);
         for (String c : chrs) {
             if (hChr.containsKey(c)) {
-
                 HashMap<Integer, double[]> chrArray = hChr.get(c);
                 List<Coordinates> cTmp = posMap.get(c);
                 int cEnd = cTmp.get(cTmp.size() - 1).end;
-                tmpX1 += tmpX2;
+                tmpX1 += tmpX2 + 2;
                 tmpX2 = ((double) cEnd / total) * x2;
+//                if(!c.equals("1"))
+                g2d.setStroke(new BasicStroke(0.5f));
+                drawChrom(g2d, posMap.get(c), 5.0, tmpX1, tmpX2, 5.0, cColors);
+                RoundRectangle2D.Double rect = new RoundRectangle2D.Double(tmpX1 - 1, -5.5, tmpX2 + 1, 5.5, 3, 3);
 
-                System.out.println(tmpX1 + "\t" + cEnd + "\t" + tmpX2 + "\t" + total);
+                g2d.setColor(Color.BLACK);
+//                        g2d.setColor(Color.lightGray);
+//                        g2d.fill(rect);
+                g2d.draw(rect);
+//g2d.setColor(Color.BLACK);
+                g2d.drawString(c, (float) (tmpX1 + (tmpX2 - 2) / 2), 5);
+//                System.out.println(tmpX1 + "\t" + cEnd + "\t" + tmpX2 + "\t" + total);
                 g2d.setColor(col[ci++]);
                 for (Map.Entry<Integer, double[]> map : chrArray.entrySet()) {
                     double cPos = tmpX1 + ((double) map.getKey() / cEnd) * tmpX2;
@@ -136,9 +150,9 @@ public class CreateSNVTFPlot {
                         y2 = y1 + yLen;
                         g2d.draw(new Line2D.Double(cPos, y2, cPos, y2 - (yLen * (values[v] / maxValue))));
                         if (!c.equals(ctmp)) {
-                            g2d.drawString(c, (float) (tmpX1 + tmpX2/2), y2 + 5);
+                            g2d.drawString(c, (float) (float) (tmpX1 + (tmpX2 - 2) / 2), y2 + 5);
                         }
-//                        System.out.println(cPos + "\t" + y2 + "\t" + cPos + "\t" + y2);
+//                        System.out.println(cPos + "\t" + y2 + "\t" + cPos + "\t" + y2);                       
                     }
                     ctmp = c;
                 }
@@ -195,35 +209,40 @@ public class CreateSNVTFPlot {
         return posMap;
     }
 
-//    private Group drawChrom(PDFGraphics g2d, LinkedHashMap<String, List<String>> posMap, int cEnd, float height, float pWidth,
-//            float xPos, float yPos) {
-//        int cStart = 0;
-//
-//        int s = 0;
-//        for (Map.Entry<String, List<String>> map : posMap.entrySet()) {
-//            List<String> li = map.getValue();
-//            int start = Integer.parseInt(li.get(0));
-//            int end = Integer.parseInt(li.get(1));
-//            float cX = xPos + (pWidth * (start - cStart) / (float) (cEnd - cStart));
-//            float cY = xPos + (pWidth * (end - cStart) / (float) (cEnd - cStart));
-//            // System.out.println(cX + " " + cY);
-//            Rectangle pRectangle = new Rectangle();
-//            pRectangle.setX(cX);
-//            pRectangle.setY(yPos);
-//            pRectangle.setWidth(cY - cX);
-//            pRectangle.setHeight(height);
-//            pRectangle.setFill(cColors.get(li.get(2)));
-//            pRectangle.setStroke(javafx.scene.paint.Color.BLACK);
-//            ;
-//            if (li.get(2).equals("acen")) {
-//                pRectangle.setArcHeight(height);
-//                pRectangle.setArcWidth(cY - cX);
-//            }
-//            root.getChildren().add(pRectangle);
-//        }
-//
-//        return root;
-//    }
+    private void drawChrom(PDFGraphics g2d, List<Coordinates> corMap, double height, double tmpX1,
+            double tmpX2, double yPos, Map<String, Color> cColors) {
+        int cStart = 0;
+        int cEnd = corMap.get(corMap.size() - 1).end;
+
+        for (Coordinates coor : corMap) {
+            int start = coor.start;
+            int end = coor.end;
+            double cX = tmpX1 + (tmpX2 * (start - cStart) / (double) (cEnd - cStart));
+            double cY = tmpX1 + (tmpX2 * (end - cStart) / (float) (cEnd - cStart));
+            g2d.setColor(cColors.get(coor.g));
+
+            if (coor.g.equals("acen")) {
+                int aa = 180;
+                if (coor.arm.contains("p")) {
+                    aa = -180;
+//        System.out.println(aa+"*******");
+                }
+                Arc2D arc = new Arc2D.Double(cX, -yPos, cY - cX, height, 90, aa, Arc2D.OPEN);
+                g2d.fill(arc);
+                g2d.draw(arc);
+            } else {
+                System.out.println(coor.chr + "\t" + cX + "\t" + cY + "\t" + (cY - cX) + "\t" + yPos + "\t" + height);
+                Rectangle2D.Double rect = new Rectangle2D.Double(cX, -yPos, cY - cX, height);
+                g2d.fill(rect);
+                g2d.draw(rect);
+            }
+        }
+//          Rectangle2D.Double rectBorder = new Rectangle2D.Double(tmpX1, -5.3, tmpX2, 5.3);
+//                        g2d.setColor(Color.BLACK);
+////                        g2d.fill(rect);
+//                        g2d.draw(rectBorder);       
+    }
+
     private HashMap<String, HashMap<Integer, double[]>> createChr(String dataFile) {
         UtilInterface util = new UtilInterface();
         String[] ann = util.getDataFromFile(dataFile, true);
@@ -285,5 +304,19 @@ public class CreateSNVTFPlot {
         }
         return dArray;
 
+    }
+
+    private Map<String, Color> getCytoColors() {
+        Map<String, Color> cColors = new HashMap<>(7);
+        cColors.put("gneg", Color.WHITE);
+        cColors.put("gpos25", Color.LIGHT_GRAY);
+        cColors.put("gpos50", Color.GRAY);
+        cColors.put("gpos75", Color.DARK_GRAY);
+        cColors.put("gpos100", Color.BLACK);
+        cColors.put("acen", Color.BLACK);
+        cColors.put("gvar", Color.BLACK);
+        cColors.put("stalk", Color.ORANGE);
+
+        return cColors;
     }
 }
